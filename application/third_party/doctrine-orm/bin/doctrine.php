@@ -1,4 +1,5 @@
 <?php
+chdir('..');
 
 require_once 'Doctrine/Common/ClassLoader.php';
 
@@ -8,7 +9,8 @@ $classLoader->register();
 $classLoader = new \Doctrine\Common\ClassLoader('Symfony', 'Doctrine');
 $classLoader->register();
 
-$configFile = getcwd() . DIRECTORY_SEPARATOR . 'cli-config.php';
+//$configFile = getcwd() . DIRECTORY_SEPARATOR . 'cli-config.php';
+$configFile = 'bin/cli-config.php';
 
 $helperSet = null;
 if (file_exists($configFile)) {
