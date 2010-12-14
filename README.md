@@ -51,9 +51,9 @@ Example of root model (not in a module), it should be inside *application/models
 Example of model in a module, it should be inside *application/[module_name]/models*. Note the difference in namespace:
 
 	// Prototype:
-	// namespace [module_name]/models;
+	// namespace [module_name]\models;
 	// Example:
-	namespace auth/models;
+	namespace auth\models;
 
 	class User {
 		/**
