@@ -5,6 +5,8 @@ Setup ready to use CodeIgniter framework with:
 -	[CodeIgniter 2.0](http://codeigniter.com)
 - [Modular Extensions - HMVC](http://bitbucket.org/wiredesignz/codeigniter-modular-extensions-hmvc/overview)
 - [Doctrine 2.0](http://http://www.doctrine-project.org/)
+- [DoctrineExtensions](https://github.com/l3pp4rd/DoctrineExtensions) (partial support)
+
 
 ## How to use?
 
@@ -96,7 +98,7 @@ You can also shorten the instantiation with the **use** operator (before class d
 
 	use auth\models\User;
 	
-	class User extends CI_Controller {
+	class Test extends CI_Controller {
 		// ...
 		
 		public function index()
@@ -123,3 +125,4 @@ Doctrine console can be used in terminal from *application/third_party/doctrine-
 - [CodeIgniter user guide](http://codeigniter.com/user_guide)
 - [HMVC Wiki](http://bitbucket.org/wiredesignz/codeigniter-modular-extensions-hmvc/wiki)
 - [Doctrine documentation](http://www.doctrine-project.org/projects/orm/2.0/docs/en)
+- [DoctrineExtensions Post](http://www.doctrine-project.org/blog/doctrine2-behavioral-extensions)

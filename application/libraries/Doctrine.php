@@ -1,4 +1,4 @@
-<?php  if (!defined('BASEPATH')) exit('No direct script access allowed');
+<?php if (!defined('BASEPATH')) exit('No direct script access allowed');
  
 use Doctrine\Common\ClassLoader,
     Doctrine\ORM\Configuration,
@@ -8,7 +8,11 @@ use Doctrine\Common\ClassLoader,
 		Doctrine\ORM\Mapping\Driver\AnnotationDriver,
     Doctrine\DBAL\Logging\EchoSqlLogger,
 		Doctrine\DBAL\Event\Listeners\MysqlSessionInit,
-		Doctrine\ORM\Tools\SchemaTool;
+		Doctrine\ORM\Tools\SchemaTool,
+		Doctrine\Common\EventManager,
+		Gedmo\Timestampable\TimestampableListener,
+		Gedmo\Sluggable\SluggableListener,
+		Gedmo\Tree\TreeListener;
 
 /**
  * CodeIgniter Doctrine Library
@@ -16,9 +20,9 @@ use Doctrine\Common\ClassLoader,
  * Doctine 2 wrapper for Codeigniter 
  *
  * @category		Libraries
- * @author			Rubén Sarrió <me@rubensarrio.com>
+ * @author			Rubén Sarrió <rubensarrio@gmail.com>
  * @link 				https://github.com/rubensarrio/codeigniter-hmvc-doctrine
- * @version			1
+ * @version			1.1
  */
 class Doctrine {
 	
@@ -46,6 +50,17 @@ class Doctrine {
 			$loader = new ClassLoader($module, APPPATH.'modules');
 			$loader->register();
 		}
+		
+		// Set up Gedmo
+		$classLoader = new ClassLoader('Gedmo', APPPATH.'third_party');
+		$classLoader->register();
+		$evm = new EventManager;
+		// timestampable
+		$evm->addEventSubscriber(new TimestampableListener);
+		// sluggable
+		$evm->addEventSubscriber(new SluggableListener);
+		// tree
+		$evm->addEventSubscriber(new TreeListener);
 		
 		// Set up proxies loading
     $loader = new ClassLoader('Proxies', APPPATH.'Proxies');
@@ -90,7 +105,7 @@ class Doctrine {
     );
  
     // Create EntityManager
-    $this->em = EntityManager::create($connection, $config);
+    $this->em = EntityManager::create($connection, $config, $evm);
 		
 		// Force UTF-8
 		$this->em->getEventManager()->addEventSubscriber(
