@@ -1,5 +1,7 @@
 <?php
 /*
+ *  $Id$
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -16,40 +18,28 @@
  * and is licensed under the LGPL. For more information, see
  * <http://www.doctrine-project.org>.
  */
- 
-namespace Doctrine\DBAL;
+
+namespace Doctrine\DBAL\Driver\PDOSqlsrv;
 
 /**
- * Class to store and retrieve the version of Doctrine
+ * Sqlsrv Connection implementation.
  *
- * @license http://www.opensource.org/licenses/lgpl-license.php LGPL
- * @link    www.doctrine-project.org
- * @since   2.0
- * @version $Revision$
- * @author  Benjamin Eberlei <kontakt@beberlei.de>
- * @author  Guilherme Blanco <guilhermeblanco@hotmail.com>
- * @author  Jonathan Wage <jonwage@gmail.com>
- * @author  Roman Borschel <roman@code-factory.org>
+ * @since 2.0
  */
-class Version
+class Connection extends \Doctrine\DBAL\Driver\PDOConnection implements \Doctrine\DBAL\Driver\Connection
 {
     /**
-     * Current Doctrine Version
+     * @override
      */
-    const VERSION = '2.0.0RC4-DEV';
-
-    /**
-     * Compares a Doctrine version with the current one.
-     *
-     * @param string $version Doctrine version to compare.
-     * @return int Returns -1 if older, 0 if it is the same, 1 if version 
-     *             passed as argument is newer.
-     */
-    public static function compare($version)
+    public function quote($value, $type=\PDO::PARAM_STR)
     {
-        $currentVersion = str_replace(' ', '', strtolower(self::VERSION));
-        $version = str_replace(' ', '', $version);
-
-        return version_compare($version, $currentVersion);
+        $val = parent::quote($value, $type);
+		
+		// Fix for a driver version terminating all values with null byte
+		if (strpos($val, "\0") !== false) {
+			$val = substr($val, 0, -1);
+		}
+		
+		return $val;
     }
 }

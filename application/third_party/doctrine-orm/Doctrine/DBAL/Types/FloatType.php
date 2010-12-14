@@ -1,7 +1,5 @@
 <?php
 /*
- *  $Id$
- *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -19,42 +17,38 @@
  * <http://www.doctrine-project.org>.
  */
 
-namespace Doctrine\DBAL\Driver\PDOMsSql;
 
-/**
- * MsSql Connection implementation.
- *
- * @since 2.0
- */
-class Connection extends \PDO implements \Doctrine\DBAL\Driver\Connection
+namespace Doctrine\DBAL\Types;
+
+use Doctrine\DBAL\Platforms\AbstractPlatform;
+
+class FloatType extends Type
 {
-    /**
-     * Performs the rollback.
-     * 
-     * @override
-     */
-    public function rollback()
+    public function getName()
     {
-        $this->exec('ROLLBACK TRANSACTION');
+        return Type::FLOAT;
     }
 
     /**
-     * Performs the commit.
-     * 
-     * @override
+     * @param array $fieldDeclaration
+     * @param AbstractPlatform $platform
+     * @return string
      */
-    public function commit()
+    public function getSQLDeclaration(array $fieldDeclaration, AbstractPlatform $platform)
     {
-        $this->exec('COMMIT TRANSACTION');
+        return $platform->getFloatDeclarationSQL($fieldDeclaration);
     }
 
     /**
-     * Begins a database transaction.
-     * 
-     * @override
+     * Converts a value from its database representation to its PHP representation
+     * of this type.
+     *
+     * @param mixed $value The value to convert.
+     * @param AbstractPlatform $platform The currently used database platform.
+     * @return mixed The PHP representation of the value.
      */
-    public function beginTransaction()
+    public function convertToPHPValue($value, AbstractPlatform $platform)
     {
-        $this->exec('BEGIN TRANSACTION');
+        return (null === $value) ? null : (double) $value;
     }
 }
