@@ -6,7 +6,7 @@
  *
  * @package		CodeIgniter
  * @author		ExpressionEngine Dev Team
- * @copyright	Copyright (c) 2008 - 2010, EllisLab, Inc.
+ * @copyright	Copyright (c) 2008 - 2011, EllisLab, Inc.
  * @license		http://codeigniter.com/user_guide/license.html
  * @link		http://codeigniter.com
  * @since		Version 1.0
@@ -42,7 +42,7 @@
  * @author		ExpressionEngine Dev Team
  * @link		http://codeigniter.com/user_guide/general/encryption.html
  */
-class CI_SHA {
+class CI_SHA1 {
 
 	public function __construct()
 	{
@@ -88,7 +88,7 @@ class CI_SHA {
 			$oldd = $d;
 			$olde = $e;
 
-			for($j = 0; $j < 80; $j++)
+			for ($j = 0; $j < 80; $j++)
 			{
 				if ($j < 16)
 				{

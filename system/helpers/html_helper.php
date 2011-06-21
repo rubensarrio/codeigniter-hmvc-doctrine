@@ -6,7 +6,7 @@
  *
  * @package		CodeIgniter
  * @author		ExpressionEngine Dev Team
- * @copyright	Copyright (c) 2008 - 2010, EllisLab, Inc.
+ * @copyright	Copyright (c) 2008 - 2011, EllisLab, Inc.
  * @license		http://codeigniter.com/user_guide/license.html
  * @link		http://codeigniter.com
  * @since		Version 1.0
@@ -258,7 +258,16 @@ if ( ! function_exists('doctype'))
 
 		if ( ! is_array($_doctypes))
 		{
-			if ( ! require_once(APPPATH.'config/doctypes.php'))
+			if (defined('ENVIRONMENT') AND is_file(APPPATH.'config/'.ENVIRONMENT.'/doctypes'.EXT))
+			{
+				include(APPPATH.'config/'.ENVIRONMENT.'/doctypes'.EXT);
+			}
+			elseif (is_file(APPPATH.'config/doctypes'.EXT))
+			{
+				include(APPPATH.'config/doctypes'.EXT);
+			}
+
+			if ( ! is_array($_doctypes))
 			{
 				return FALSE;
 			}

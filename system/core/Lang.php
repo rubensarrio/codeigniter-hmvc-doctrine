@@ -6,7 +6,7 @@
  *
  * @package		CodeIgniter
  * @author		ExpressionEngine Dev Team
- * @copyright	Copyright (c) 2008 - 2010, EllisLab, Inc.
+ * @copyright	Copyright (c) 2008 - 2011, EllisLab, Inc.
  * @license		http://codeigniter.com/user_guide/license.html
  * @link		http://codeigniter.com
  * @since		Version 1.0
@@ -78,17 +78,21 @@ class CI_Lang {
 		{
 			include($alt_path.'language/'.$idiom.'/'.$langfile);
 		}
-		elseif (file_exists(APPPATH.'language/'.$idiom.'/'.$langfile))
-		{
-			include(APPPATH.'language/'.$idiom.'/'.$langfile);
-		}
 		else
 		{
-			if (file_exists(BASEPATH.'language/'.$idiom.'/'.$langfile))
+			$found = FALSE;
+
+			foreach (get_instance()->load->get_package_paths(TRUE) as $package_path)
 			{
-				include(BASEPATH.'language/'.$idiom.'/'.$langfile);
+				if (file_exists($package_path.'language/'.$idiom.'/'.$langfile))
+				{
+					include($package_path.'language/'.$idiom.'/'.$langfile);
+					$found = TRUE;
+					break;
+				}
 			}
-			else
+
+			if ($found !== TRUE)
 			{
 				show_error('Unable to load the requested language file: language/'.$idiom.'/'.$langfile);
 			}
@@ -126,6 +130,13 @@ class CI_Lang {
 	function line($line = '')
 	{
 		$line = ($line == '' OR ! isset($this->language[$line])) ? FALSE : $this->language[$line];
+
+		// Because killer robots like unicorns!
+		if ($line === FALSE)
+		{
+			log_message('error', 'Could not find the language line "'.$line.'"');
+		}
+
 		return $line;
 	}
 

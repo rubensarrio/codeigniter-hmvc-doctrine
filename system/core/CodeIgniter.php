@@ -6,7 +6,7 @@
  *
  * @package		CodeIgniter
  * @author		ExpressionEngine Dev Team
- * @copyright	Copyright (c) 2008 - 2010, EllisLab, Inc.
+ * @copyright	Copyright (c) 2008 - 2011, EllisLab, Inc.
  * @license		http://codeigniter.com/user_guide/license.html
  * @link		http://codeigniter.com
  * @since		Version 1.0
@@ -32,7 +32,14 @@
  *  Define the CodeIgniter Version
  * ------------------------------------------------------
  */
-	define('CI_VERSION', '2.0');
+	define('CI_VERSION', '2.0.2');
+
+/*
+ * ------------------------------------------------------
+ *  Define the CodeIgniter Branch (Core = TRUE, Reactor = FALSE)
+ * ------------------------------------------------------
+ */
+	define('CI_CORE', FALSE);
 
 /*
  * ------------------------------------------------------
@@ -46,7 +53,14 @@
  *  Load the framework constants
  * ------------------------------------------------------
  */
-	require(APPPATH.'config/constants'.EXT);
+	if (defined('ENVIRONMENT') AND file_exists(APPPATH.'config/'.ENVIRONMENT.'/constants'.EXT))
+	{
+		require(APPPATH.'config/'.ENVIRONMENT.'/constants'.EXT);
+	}
+	else
+	{
+		require(APPPATH.'config/constants'.EXT);
+	}
 
 /*
  * ------------------------------------------------------
@@ -80,7 +94,7 @@
 	{
 		get_config(array('subclass_prefix' => $assign_to_config['subclass_prefix']));
 	}
-	
+
 /*
  * ------------------------------------------------------
  *  Set a liberal script execution time limit
@@ -129,17 +143,17 @@
 
 /*
  * ------------------------------------------------------
- *  Instantiate the Unicode class
+ *  Instantiate the UTF-8 class
  * ------------------------------------------------------
  *
- * Note: Order here is rather important as the Unicode
+ * Note: Order here is rather important as the UTF-8
  * class needs to be used very early on, but it cannot
  * properly determine if UTf-8 can be supported until
  * after the Config class is instantiated.
  *
  */
 
-	$UNI =& load_class('Unicode', 'core');
+	$UNI =& load_class('Utf8', 'core');
 
 /*
  * ------------------------------------------------------
@@ -181,6 +195,13 @@
 			exit;
 		}
 	}
+
+/*
+ * -----------------------------------------------------
+ * Load the security class for xss and csrf support
+ * -----------------------------------------------------
+ */
+	$SEC =& load_class('Security', 'core');
 
 /*
  * ------------------------------------------------------
@@ -289,7 +310,28 @@
 		// methods, so we'll use this workaround for consistent behavior
 		if ( ! in_array(strtolower($method), array_map('strtolower', get_class_methods($CI))))
 		{
-			show_404("{$class}/{$method}");
+			// Check and see if we are using a 404 override and use it.
+			if ( ! empty($RTR->routes['404_override']))
+			{
+				$x = explode('/', $RTR->routes['404_override']);
+				$class = $x[0];
+				$method = (isset($x[1]) ? $x[1] : 'index');
+				if ( ! class_exists($class))
+				{
+					if ( ! file_exists(APPPATH.'controllers/'.$class.EXT))
+					{
+						show_404("{$class}/{$method}");
+					}
+
+					include_once(APPPATH.'controllers/'.$class.EXT);
+					unset($CI);
+					$CI = new $class();
+				}
+			}
+			else
+			{
+				show_404("{$class}/{$method}");
+			}
 		}
 
 		// Call the requested method.

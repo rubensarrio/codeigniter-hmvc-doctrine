@@ -6,7 +6,7 @@
  *
  * @package		CodeIgniter
  * @author		ExpressionEngine Dev Team
- * @copyright	Copyright (c) 2008 - 2010, EllisLab, Inc.
+ * @copyright	Copyright (c) 2008 - 2011, EllisLab, Inc.
  * @license		http://codeigniter.com/user_guide/license.html
  * @link		http://codeigniter.com
  * @since		Version 1.0
@@ -87,7 +87,7 @@ if ( ! function_exists('create_captcha'))
 
 		$current_dir = @opendir($img_path);
 
-		while($filename = @readdir($current_dir))
+		while ($filename = @readdir($current_dir))
 		{
 			if ($filename != "." and $filename != ".." and $filename != "index.html")
 			{

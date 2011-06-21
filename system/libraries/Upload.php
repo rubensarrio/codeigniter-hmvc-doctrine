@@ -6,7 +6,7 @@
  *
  * @package		CodeIgniter
  * @author		ExpressionEngine Dev Team
- * @copyright	Copyright (c) 2008 - 2010, EllisLab, Inc.
+ * @copyright	Copyright (c) 2008 - 2011, EllisLab, Inc.
  * @license		http://codeigniter.com/user_guide/license.html
  * @link		http://codeigniter.com
  * @since		Version 1.0
@@ -142,7 +142,8 @@ class CI_Upload {
 	 */
 	public function do_upload($field = 'userfile')
 	{
-		// Is $_FILES[$field] set? If not, no reason to continue.
+
+	// Is $_FILES[$field] set? If not, no reason to continue.
 		if ( ! isset($_FILES[$field]))
 		{
 			$this->set_error('upload_no_file_selected');
@@ -212,7 +213,18 @@ class CI_Upload {
 		if ($this->_file_name_override != '')
 		{
 			$this->file_name = $this->_prep_filename($this->_file_name_override);
-			$this->file_ext  = $this->get_extension($this->file_name);
+
+			// If no extension was provided in the file_name config item, use the uploaded one
+			if (strpos($this->_file_name_override, '.') === FALSE)
+			{
+				$this->file_name .= $this->file_ext;
+			}
+
+			// An extension was provided, lets have it!
+			else
+			{
+				$this->file_ext	 = $this->get_extension($this->_file_name_override);
+			}
 
 			if ( ! $this->is_allowed_filetype(TRUE))
 			{
@@ -863,12 +875,6 @@ class CI_Upload {
 		}
 
 		$CI =& get_instance();
-
-		if ( ! isset($CI->security))
-		{
-			$CI->load->library('security');
-		}
-
 		return $CI->security->xss_clean($data, TRUE);
 	}
 
@@ -939,11 +945,21 @@ class CI_Upload {
 
 		if (count($this->mimes) == 0)
 		{
-			if (@require_once(APPPATH.'config/mimes'.EXT))
+			if (defined('ENVIRONMENT') AND is_file(APPPATH.'config/'.ENVIRONMENT.'/mimes'.EXT))
 			{
-				$this->mimes = $mimes;
-				unset($mimes);
+				include(APPPATH.'config/'.ENVIRONMENT.'/mimes'.EXT);
 			}
+			elseif (is_file(APPPATH.'config/mimes'.EXT))
+			{
+				include(APPPATH.'config//mimes'.EXT);
+			}
+			else
+			{
+				return FALSE;
+			}
+
+			$this->mimes = $mimes;
+			unset($mimes);
 		}
 
 		return ( ! isset($this->mimes[$mime])) ? FALSE : $this->mimes[$mime];

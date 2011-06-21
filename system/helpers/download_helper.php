@@ -6,7 +6,7 @@
  *
  * @package		CodeIgniter
  * @author		ExpressionEngine Dev Team
- * @copyright	Copyright (c) 2008 - 2010, EllisLab, Inc.
+ * @copyright	Copyright (c) 2008 - 2011, EllisLab, Inc.
  * @license		http://codeigniter.com/user_guide/license.html
  * @link		http://codeigniter.com
  * @since		Version 1.0
@@ -58,7 +58,14 @@ if ( ! function_exists('force_download'))
 		$extension = end($x);
 
 		// Load the mime types
-		@include(APPPATH.'config/mimes'.EXT);
+		if (defined('ENVIRONMENT') AND is_file(APPPATH.'config/'.ENVIRONMENT.'/mimes'.EXT))
+		{
+			include(APPPATH.'config/'.ENVIRONMENT.'/mimes'.EXT);
+		}
+		elseif (is_file(APPPATH.'config/mimes'.EXT))
+		{
+			include(APPPATH.'config/mimes'.EXT);
+		}
 
 		// Set a default mime if we can't find it
 		if ( ! isset($mimes[$extension]))

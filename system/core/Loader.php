@@ -6,7 +6,7 @@
  *
  * @package		CodeIgniter
  * @author		ExpressionEngine Dev Team
- * @copyright	Copyright (c) 2008 - 2010, EllisLab, Inc.
+ * @copyright	Copyright (c) 2008 - 2011, EllisLab, Inc.
  * @license		http://codeigniter.com/user_guide/license.html
  * @link		http://codeigniter.com
  * @since		Version 1.0
@@ -79,14 +79,14 @@ class CI_Loader {
 	{
 		if (is_array($library))
 		{
-			foreach($library as $read)
+			foreach ($library as $class)
 			{
-				$this->library($read);	
+				$this->library($class, $params);
 			}
-			
+
 			return;
 		}
-		
+
 		if ($library == '' OR isset($this->_base_classes[$library]))
 		{
 			return FALSE;
@@ -97,17 +97,7 @@ class CI_Loader {
 			$params = NULL;
 		}
 
-		if (is_array($library))
-		{
-			foreach ($library as $class)
-			{
-				$this->_ci_load_class($class, $params, $object_name);
-			}
-		}
-		else
-		{
-			$this->_ci_load_class($library, $params, $object_name);
-		}
+		$this->_ci_load_class($library, $params, $object_name);
 	}
 
 	// --------------------------------------------------------------------
@@ -127,7 +117,7 @@ class CI_Loader {
 	{
 		if (is_array($model))
 		{
-			foreach($model as $babe)
+			foreach ($model as $babe)
 			{
 				$this->model($babe);
 			}
@@ -527,7 +517,7 @@ class CI_Loader {
 	function add_package_path($path)
 	{
 		$path = rtrim($path, '/').'/';
-		
+
 		array_unshift($this->_ci_library_paths, $path);
 		array_unshift($this->_ci_model_paths, $path);
 		array_unshift($this->_ci_helper_paths, $path);
@@ -535,6 +525,22 @@ class CI_Loader {
 		// Add config file path
 		$config =& $this->_ci_get_component('config');
 		array_unshift($config->_config_paths, $path);
+	}
+
+	// --------------------------------------------------------------------
+
+	/**
+	 * Get Package Paths
+	 *
+	 * Return a list of all package paths, by default it will ignore BASEPATH.
+	 *
+	 * @access	public
+	 * @param	string
+	 * @return	void
+	 */
+	function get_package_paths($include_base = FALSE)
+	{
+		return $include_base === TRUE ? $this->_ci_library_paths : $this->_ci_model_paths;
 	}
 
 	// --------------------------------------------------------------------
@@ -563,7 +569,7 @@ class CI_Loader {
 		else
 		{
 			$path = rtrim($path, '/').'/';
-			
+
 			foreach (array('_ci_library_paths', '_ci_model_paths', '_ci_helper_paths') as $var)
 			{
 				if (($key = array_search($path, $this->{$var})) !== FALSE)
@@ -854,15 +860,39 @@ class CI_Loader {
 		// Is there an associated config file for this class?  Note: these should always be lowercase
 		if ($config === NULL)
 		{
-			// We test for both uppercase and lowercase, for servers that
-			// are case-sensitive with regard to file names
-			if (file_exists(APPPATH.'config/'.strtolower($class).EXT))
+			// Fetch the config paths containing any package paths
+			$config_component = $this->_ci_get_component('config');
+
+			if (is_array($config_component->_config_paths))
 			{
-				include_once(APPPATH.'config/'.strtolower($class).EXT);
-			}
-			elseif (file_exists(APPPATH.'config/'.ucfirst(strtolower($class)).EXT))
-			{
-				include_once(APPPATH.'config/'.ucfirst(strtolower($class)).EXT);
+				// Break on the first found file, thus package files
+				// are not overridden by default paths
+				foreach ($config_component->_config_paths as $path)
+				{
+					// We test for both uppercase and lowercase, for servers that
+					// are case-sensitive with regard to file names. Check for environment
+					// first, global next
+					if (defined('ENVIRONMENT') AND file_exists($path .'config/'.ENVIRONMENT.'/'.strtolower($class).EXT))
+					{
+						include_once($path .'config/'.ENVIRONMENT.'/'.strtolower($class).EXT);
+						break;
+					}
+					elseif (defined('ENVIRONMENT') AND file_exists($path .'config/'.ENVIRONMENT.'/'.ucfirst(strtolower($class)).EXT))
+					{
+						include_once($path .'config/'.ENVIRONMENT.'/'.ucfirst(strtolower($class)).EXT);
+						break;
+					}
+					elseif (file_exists($path .'config/'.strtolower($class).EXT))
+					{
+						include_once($path .'config/'.strtolower($class).EXT);
+						break;
+					}
+					elseif (file_exists($path .'config/'.ucfirst(strtolower($class)).EXT))
+					{
+						include_once($path .'config/'.ucfirst(strtolower($class)).EXT);
+						break;
+					}
+				}
 			}
 		}
 
@@ -935,11 +965,28 @@ class CI_Loader {
 	 */
 	function _ci_autoloader()
 	{
-		include_once(APPPATH.'config/autoload'.EXT);
+		if (defined('ENVIRONMENT') AND file_exists(APPPATH.'config/'.ENVIRONMENT.'/autoload'.EXT))
+		{
+			include_once(APPPATH.'config/'.ENVIRONMENT.'/autoload'.EXT);
+		}
+		else
+		{
+			include_once(APPPATH.'config/autoload'.EXT);
+		}
+		
 
 		if ( ! isset($autoload))
 		{
 			return FALSE;
+		}
+
+		// Autoload packages
+		if (isset($autoload['packages']))
+		{
+			foreach ($autoload['packages'] as $package_path)
+			{
+				$this->add_package_path($package_path);
+			}
 		}
 
 		// Load any custom config file

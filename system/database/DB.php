@@ -6,7 +6,7 @@
  *
  * @package		CodeIgniter
  * @author		ExpressionEngine Dev Team
- * @copyright	Copyright (c) 2008 - 2010, EllisLab, Inc.
+ * @copyright	Copyright (c) 2008 - 2011, EllisLab, Inc.
  * @license		http://codeigniter.com/user_guide/license.html
  * @link		http://codeigniter.com
  * @since		Version 1.0
@@ -27,7 +27,16 @@ function &DB($params = '', $active_record_override = NULL)
 	// Load the DB config file if a DSN string wasn't passed
 	if (is_string($params) AND strpos($params, '://') === FALSE)
 	{
-		include(APPPATH.'config/database'.EXT);
+		// Is the config file in the environment folder?
+		if ( ! defined('ENVIRONMENT') OR ! file_exists($file_path = APPPATH.'config/'.ENVIRONMENT.'/database'.EXT))
+		{
+			if ( ! file_exists($file_path = APPPATH.'config/database'.EXT))
+			{
+				show_error('The configuration file database'.EXT.' does not exist.');
+			}
+		}
+		
+		include($file_path);
 
 		if ( ! isset($db) OR count($db) == 0)
 		{
@@ -74,7 +83,7 @@ function &DB($params = '', $active_record_override = NULL)
 		{
 			parse_str($dns['query'], $extra);
 
-			foreach($extra as $key => $val)
+			foreach ($extra as $key => $val)
 			{
 				// booleans please
 				if (strtoupper($val) == "TRUE")

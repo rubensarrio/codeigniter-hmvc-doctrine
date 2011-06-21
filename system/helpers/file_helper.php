@@ -6,7 +6,7 @@
  *
  * @package		CodeIgniter
  * @author		ExpressionEngine Dev Team
- * @copyright	Copyright (c) 2008 - 2010, EllisLab, Inc.
+ * @copyright	Copyright (c) 2008 - 2011, EllisLab, Inc.
  * @license		http://codeigniter.com/user_guide/license.html
  * @link		http://codeigniter.com
  * @since		Version 1.0
@@ -128,7 +128,7 @@ if ( ! function_exists('delete_files'))
 			return FALSE;
 		}
 
-		while(FALSE !== ($filename = @readdir($current_dir)))
+		while (FALSE !== ($filename = @readdir($current_dir)))
 		{
 			if ($filename != "." and $filename != "..")
 			{
@@ -352,7 +352,16 @@ if ( ! function_exists('get_mime_by_extension'))
 
 		if ( ! is_array($mimes))
 		{
-			if ( ! require_once(APPPATH.'config/mimes.php'))
+			if (defined('ENVIRONMENT') AND is_file(APPPATH.'config/'.ENVIRONMENT.'/mimes'.EXT))
+			{
+				include(APPPATH.'config/'.ENVIRONMENT.'/mimes'.EXT);
+			}
+			elseif (is_file(APPPATH.'config/mimes'.EXT))
+			{
+				include(APPPATH.'config/mimes'.EXT);
+			}
+
+			if ( ! is_array($mimes))
 			{
 				return FALSE;
 			}

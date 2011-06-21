@@ -6,7 +6,7 @@
  *
  * @package		CodeIgniter
  * @author		ExpressionEngine Dev Team
- * @copyright	Copyright (c) 2008 - 2010, EllisLab, Inc.
+ * @copyright	Copyright (c) 2008 - 2011, EllisLab, Inc.
  * @license		http://codeigniter.com/user_guide/license.html
  * @link		http://codeigniter.com
  * @since		Version 1.0
@@ -47,6 +47,24 @@ class CI_Config {
 	{
 		$this->config =& get_config();
 		log_message('debug', "Config Class Initialized");
+
+		// Set the base_url automatically if none was provided
+		if ($this->config['base_url'] == '')
+		{
+			if (isset($_SERVER['HTTP_HOST']))
+			{
+				$base_url = isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off' ? 'https' : 'http';
+				$base_url .= '://'. $_SERVER['HTTP_HOST'];
+				$base_url .= str_replace(basename($_SERVER['SCRIPT_NAME']), '', $_SERVER['SCRIPT_NAME']);
+			}
+
+			else
+			{
+				$base_url = 'http://localhost/';
+			}
+
+			$this->set_item('base_url', $base_url);
+		}
 	}
 
 	// --------------------------------------------------------------------
@@ -56,24 +74,40 @@ class CI_Config {
 	 *
 	 * @access	public
 	 * @param	string	the config file name
+	 * @param   boolean  if configuration values should be loaded into their own section
+	 * @param   boolean  true if errors should just return false, false if an error message should be displayed
 	 * @return	boolean	if the file was loaded correctly
 	 */
 	function load($file = '', $use_sections = FALSE, $fail_gracefully = FALSE)
 	{
 		$file = ($file == '') ? 'config' : str_replace(EXT, '', $file);
+		$found = FALSE;
 		$loaded = FALSE;
 
-		foreach($this->_config_paths as $path)
+		foreach ($this->_config_paths as $path)
 		{
-			$file_path = $path.'config/'.$file.EXT;
+			$check_locations = defined('ENVIRONMENT')
+				? array(ENVIRONMENT.'/'.$file, $file)
+				: array($file);
 
-			if (in_array($file_path, $this->is_loaded, TRUE))
+			foreach ($check_locations as $location)
 			{
-				$loaded = TRUE;
-				continue;
+				$file_path = $path.'config/'.$location.EXT;
+
+				if (in_array($file_path, $this->is_loaded, TRUE))
+				{
+					$loaded = TRUE;
+					continue 2;
+				}
+
+				if (file_exists($file_path))
+				{
+					$found = TRUE;
+					break;
+				}
 			}
 
-			if ( ! file_exists($path.'config/'.$file.EXT))
+			if ($found === FALSE)
 			{
 				continue;
 			}
@@ -185,14 +219,7 @@ class CI_Config {
 			return FALSE;
 		}
 
-		$pref = $this->config[$item];
-
-		if ($pref != '' && substr($pref, -1) != '/')
-		{
-			$pref .= '/';
-		}
-
-		return $pref;
+		return rtrim($this->config[$item], '/').'/';
 	}
 
 	// --------------------------------------------------------------------
@@ -208,14 +235,7 @@ class CI_Config {
 	{
 		if ($uri == '')
 		{
-			if ($this->item('base_url') == '')
-			{
-				return $this->item('index_page');
-			}
-			else
-			{
-				return $this->slash_item('base_url').$this->item('index_page');
-			}
+			return $this->slash_item('base_url').$this->item('index_page');
 		}
 
 		if ($this->item('enable_query_strings') == FALSE)
@@ -225,8 +245,9 @@ class CI_Config {
 				$uri = implode('/', $uri);
 			}
 
+			$index = $this->item('index_page') == '' ? '' : $this->slash_item('index_page');
 			$suffix = ($this->item('url_suffix') == FALSE) ? '' : $this->item('url_suffix');
-			return $this->slash_item('base_url').$this->slash_item('index_page').trim($uri, '/').$suffix;
+			return $this->slash_item('base_url').$index.trim($uri, '/').$suffix;
 		}
 		else
 		{
@@ -244,14 +265,7 @@ class CI_Config {
 				$uri = $str;
 			}
 
-			if ($this->item('base_url') == '')
-			{
-				return $this->item('index_page').'?'.$uri;
-			}
-			else
-			{
-				return $this->slash_item('base_url').$this->item('index_page').'?'.$uri;
-			}
+			return $this->slash_item('base_url').$this->item('index_page').'?'.$uri;
 		}
 	}
 
