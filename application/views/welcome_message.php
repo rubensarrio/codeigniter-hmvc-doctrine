@@ -20,7 +20,7 @@ a {
  font-weight: normal;
 }
 
-h1 {
+h1, h2 {
  color: #444;
  background-color: transparent;
  border-bottom: 1px solid #D0D0D0;
@@ -57,6 +57,12 @@ code {
 
 <p>If you are exploring CodeIgniter for the very first time, you should start by reading the <a href="user_guide/">User Guide</a>.</p>
 
+<h2>CodeIgniter 2 + HMVC + Doctrine 2</h2>
+
+<p>An example code of using CodeIgniter 2 + HMVC + Doctrine 2 can be found here:</p>
+<code>application/modules/blog</code>
+
+<p>You can start testing this example <?php echo anchor('blog/posts', 'now') ?>.</p>
 
 <p><br />Page rendered in {elapsed_time} seconds</p>
 
