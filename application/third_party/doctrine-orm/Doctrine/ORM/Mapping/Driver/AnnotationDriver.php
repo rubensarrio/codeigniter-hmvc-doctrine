@@ -67,10 +67,10 @@ class AnnotationDriver implements Driver
      * Initializes a new AnnotationDriver that uses the given AnnotationReader for reading
      * docblock annotations.
      * 
-     * @param $reader The AnnotationReader to use.
+     * @param AnnotationReader $reader The AnnotationReader to use, duck-typed.
      * @param string|array $paths One or multiple paths where mapping classes can be found. 
      */
-    public function __construct(AnnotationReader $reader, $paths = null)
+    public function __construct($reader, $paths = null)
     {
         $this->_reader = $reader;
         if ($paths) {
@@ -367,7 +367,8 @@ class AnnotationDriver implements Driver
         // Evaluate @HasLifecycleCallbacks annotation
         if (isset($classAnnotations['Doctrine\ORM\Mapping\HasLifecycleCallbacks'])) {
             foreach ($class->getMethods() as $method) {
-                if ($method->isPublic()) {
+                // filter for the declaring class only, callbacks from parents will already be registered.
+                if ($method->isPublic() && $method->getDeclaringClass()->getName() == $class->name) {
                     $annotations = $this->_reader->getMethodAnnotations($method);
 
                     if (isset($annotations['Doctrine\ORM\Mapping\PrePersist'])) {

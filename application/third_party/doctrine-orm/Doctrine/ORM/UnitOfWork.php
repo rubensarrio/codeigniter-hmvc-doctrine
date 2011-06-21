@@ -399,8 +399,11 @@ class UnitOfWork implements PropertyChangedListener
         $actualData = array();
         foreach ($class->reflFields as $name => $refProp) {
             $value = $refProp->getValue($entity);
-            if ($class->isCollectionValuedAssociation($name) && $value !== null
+            if (isset($class->associationMappings[$name])
+                    && ($class->associationMappings[$name]['type'] & ClassMetadata::TO_MANY)
+                    && $value !== null
                     && ! ($value instanceof PersistentCollection)) {
+
                 // If $value is not a Collection then use an ArrayCollection.
                 if ( ! $value instanceof Collection) {
                     $value = new ArrayCollection($value);
@@ -419,7 +422,7 @@ class UnitOfWork implements PropertyChangedListener
                 $coll->setDirty( ! $coll->isEmpty());
                 $class->reflFields[$name]->setValue($entity, $coll);
                 $actualData[$name] = $coll;
-            } else if ( ! $class->isIdentifier($name) || ! $class->isIdGeneratorIdentity()) {
+            } else if ( (! $class->isIdentifier($name) || ! $class->isIdGeneratorIdentity()) && ($name !== $class->versionField) ) {
                 $actualData[$name] = $value;
             }
         }
@@ -462,6 +465,7 @@ class UnitOfWork implements PropertyChangedListener
                         // A PersistentCollection was de-referenced, so delete it.
                         if  ( ! in_array($orgValue, $this->collectionDeletions, true)) {
                             $this->collectionDeletions[] = $orgValue;
+                            $changeSet[$propName] = $orgValue; // Signal changeset, to-many assocs will be ignored.
                         }
                     }
                 } else if ($isChangeTrackingNotify) {
@@ -737,7 +741,7 @@ class UnitOfWork implements PropertyChangedListener
         $hasPostUpdateListeners = $this->evm->hasListeners(Events::postUpdate);
         
         foreach ($this->entityUpdates as $oid => $entity) {
-            if (get_class($entity) == $className || $entity instanceof Proxy && $entity instanceof $className) {
+            if (get_class($entity) == $className || $entity instanceof Proxy && get_parent_class($entity) == $className) {
                 
                 if ($hasPreUpdateLifecycleCallbacks) {
                     $class->invokeLifecycleCallbacks(Events::preUpdate, $entity);
@@ -777,7 +781,7 @@ class UnitOfWork implements PropertyChangedListener
         $hasListeners = $this->evm->hasListeners(Events::postRemove);
         
         foreach ($this->entityDeletions as $oid => $entity) {
-            if (get_class($entity) == $className || $entity instanceof Proxy && $entity instanceof $className) {
+            if (get_class($entity) == $className || $entity instanceof Proxy && get_parent_class($entity) == $className) {
                 $persister->delete($entity);
                 unset(
                     $this->entityDeletions[$oid],
@@ -1281,6 +1285,10 @@ class UnitOfWork implements PropertyChangedListener
         }
 
         $visited[$oid] = $entity; // mark visited
+        
+        // Cascade first, because scheduleForDelete() removes the entity from the identity map, which 
+        // can cause problems when a lazy proxy has to be initialized for the cascade operation.
+        $this->cascadeRemove($entity, $visited);
 
         $class = $this->em->getClassMetadata(get_class($entity));
         $entityState = $this->getEntityState($entity);
@@ -1304,7 +1312,6 @@ class UnitOfWork implements PropertyChangedListener
                 throw new UnexpectedValueException("Unexpected entity state: $entityState.");
         }
 
-        $this->cascadeRemove($entity, $visited);
     }
 
     /**
@@ -1665,6 +1672,7 @@ class UnitOfWork implements PropertyChangedListener
             if ( ! $assoc['isCascadePersist']) {
                 continue;
             }
+            
             $relatedEntities = $class->reflFields[$assoc['fieldName']]->getValue($entity);
             if (($relatedEntities instanceof Collection || is_array($relatedEntities))) {
                 if ($relatedEntities instanceof PersistentCollection) {
@@ -1693,7 +1701,11 @@ class UnitOfWork implements PropertyChangedListener
             if ( ! $assoc['isCascadeRemove']) {
                 continue;
             }
-            //TODO: If $entity instanceof Proxy => Initialize ?
+            
+            if ($entity instanceof Proxy && !$entity->__isInitialized__) {
+                $entity->__load();
+            }
+            
             $relatedEntities = $class->reflFields[$assoc['fieldName']]->getValue($entity);
             if ($relatedEntities instanceof Collection || is_array($relatedEntities)) {
                 // If its a PersistentCollection initialization is intended! No unwrap!
@@ -1844,8 +1856,8 @@ class UnitOfWork implements PropertyChangedListener
             $idHash = $data[$class->identifier[0]];
             $id = array($class->identifier[0] => $idHash);
         }
-
-        if (isset($this->identityMap[$class->rootEntityName][$idHash])) {
+        
+        if (isset($this->identityMap[$class->rootEntityName][$idHash])) {            
             $entity = $this->identityMap[$class->rootEntityName][$idHash];
             $oid = spl_object_hash($entity);
             if ($entity instanceof Proxy && ! $entity->__isInitialized__) {
@@ -2256,7 +2268,28 @@ class UnitOfWork implements PropertyChangedListener
     {
         return $this->collectionUpdates;
     }
-
+    
+    /**
+     * Helper method to initialize a lazy loading proxy or persistent collection.
+     * 
+     * @param object
+     * @return void
+     */
+    public function initializeObject($obj)
+    {
+        if ($obj instanceof Proxy) {
+            $obj->__load();
+        } else if ($obj instanceof PersistentCollection) {
+            $obj->initialize();
+        }
+    }
+    
+    /**
+     * Helper method to show an object as string.
+     * 
+     * @param  object $obj
+     * @return string 
+     */
     private static function objToStr($obj)
     {
         return method_exists($obj, '__toString') ? (string)$obj : get_class($obj).'@'.spl_object_hash($obj);

@@ -46,6 +46,8 @@ class PostgreSqlSchemaManager extends AbstractSchemaManager
         }
 
         if (preg_match('/FOREIGN KEY \((.+)\) REFERENCES (.+)\((.+)\)/', $tableForeignKey['condef'], $values)) {
+            // PostgreSQL returns identifiers that are keywords with quotes, we need them later, don't get
+            // the idea to trim them here.
             $localColumns = array_map('trim', explode(",", $values[1]));
             $foreignColumns = array_map('trim', explode(",", $values[3]));
             $foreignTable = $values[2];
@@ -109,7 +111,11 @@ class PostgreSqlSchemaManager extends AbstractSchemaManager
 
     protected function _getPortableTableDefinition($table)
     {
-        return $table['table_name'];
+        if ($table['schema_name'] == 'public') {
+            return $table['table_name'];
+        } else {
+            return $table['schema_name'] . "." . $table['table_name'];
+        }
     }
 
     /**
@@ -155,8 +161,14 @@ class PostgreSqlSchemaManager extends AbstractSchemaManager
 
     protected function _getPortableSequenceDefinition($sequence)
     {
-        $data = $this->_conn->fetchAll('SELECT min_value, increment_by FROM ' . $sequence['relname']);
-        return new Sequence($sequence['relname'], $data[0]['increment_by'], $data[0]['min_value']);
+        if ($sequence['schemaname'] != 'public') {
+            $sequenceName = $sequence['schemaname'] . "." . $sequence['relname'];
+        } else {
+            $sequenceName = $sequence['relname'];
+        }
+
+        $data = $this->_conn->fetchAll('SELECT min_value, increment_by FROM ' . $sequenceName);
+        return new Sequence($sequenceName, $data[0]['increment_by'], $data[0]['min_value']);
     }
 
     protected function _getPortableTableColumnDefinition($tableColumn)

@@ -70,10 +70,10 @@ class ConvertDoctrine1Schema
             if (is_dir($path)) {
                 $files = glob($path . '/*.yml');
                 foreach ($files as $file) {
-                    $schema = array_merge($schema, (array) \Symfony\Component\Yaml\Yaml::load($file));
+                    $schema = array_merge($schema, (array) \Symfony\Component\Yaml\Yaml::parse($file));
                 }
             } else {
-                $schema = array_merge($schema, (array) \Symfony\Component\Yaml\Yaml::load($path));
+                $schema = array_merge($schema, (array) \Symfony\Component\Yaml\Yaml::parse($path));
             }
         }
 
@@ -188,7 +188,6 @@ class ConvertDoctrine1Schema
             $metadata->setIdGeneratorType(ClassMetadataInfo::GENERATOR_TYPE_AUTO);
         } else if (isset($column['sequence'])) {
             $metadata->setIdGeneratorType(ClassMetadataInfo::GENERATOR_TYPE_SEQUENCE);
-            $metadata->setSequenceGeneratorDefinition($definition);
             $definition = array(
                 'sequenceName' => is_array($column['sequence']) ? $column['sequence']['name']:$column['sequence']
             );
@@ -198,6 +197,7 @@ class ConvertDoctrine1Schema
             if (isset($column['sequence']['value'])) {
                 $definition['initialValue'] = $column['sequence']['value'];
             }
+            $metadata->setSequenceGeneratorDefinition($definition);
         }
         return $fieldMapping;
     }
