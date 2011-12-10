@@ -31,8 +31,13 @@ class Doctrine {
  
   public function __construct()
   {	
-    // Load database configuration from CodeIgniter
-    require_once APPPATH.'config/database.php';
+    // Is the config file in the environment folder?
+	if ( ! defined('ENVIRONMENT') OR ! file_exists($file_path = APPPATH.'config/'.ENVIRONMENT.'/database.php'))
+	{
+		$file_path = APPPATH.'config/database.php';
+	}
+    // load database configuration from CodeIgniter
+    require_once $file_path;
     
 		// Set up class loading
     require_once APPPATH
@@ -98,10 +103,10 @@ class Doctrine {
     // Database connection information
     $connection = array(
         'driver' => 'pdo_mysql',
-        'user' =>     $db['default']['username'],
-        'password' => $db['default']['password'],
-        'host' =>     $db['default']['hostname'],
-        'dbname' =>   $db['default']['database']
+        'user' =>     $db[$active_group]['username'],
+        'password' => $db[$active_group]['password'],
+        'host' =>     $db[$active_group]['hostname'],
+        'dbname' =>   $db[$active_group]['database']
     );
  
     // Create EntityManager
