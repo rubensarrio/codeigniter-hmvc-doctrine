@@ -26,7 +26,6 @@ use Doctrine\ORM\Mapping\ClassMetadata;
  * SINGLE_TABLE strategy.
  *
  * @author Roman Borschel <roman@code-factory.org>
- * @author Benjamin Eberlei <kontakt@beberlei.de>
  * @since 2.0
  * @link http://martinfowler.com/eaaCatalog/singleTableInheritance.html
  */
@@ -41,10 +40,6 @@ class SingleTablePersister extends AbstractEntityInheritancePersister
     /** {@inheritdoc} */
     protected function _getSelectColumnListSQL()
     {
-        if ($this->_selectColumnListSql !== null) {
-            return $this->_selectColumnListSql;
-        }
-
         $columnList = parent::_getSelectColumnListSQL();
 
         // Append discriminator column
@@ -53,8 +48,7 @@ class SingleTablePersister extends AbstractEntityInheritancePersister
         $rootClass = $this->_em->getClassMetadata($this->_class->rootEntityName);
         $tableAlias = $this->_getSQLTableAlias($rootClass->name);
         $resultColumnName = $this->_platform->getSQLResultCasing($discrColumn);
-        $this->_rsm->setDiscriminatorColumn('r', $resultColumnName);
-        $this->_rsm->addMetaResult('r', $resultColumnName, $discrColumn);
+        $this->_resultColumnNames[$resultColumnName] = $discrColumn;
 
         // Append subclass columns
         foreach ($this->_class->subClasses as $subClassName) {
@@ -78,8 +72,7 @@ class SingleTablePersister extends AbstractEntityInheritancePersister
             }
         }
 
-        $this->_selectColumnListSql = $columnList;
-        return $this->_selectColumnListSql;
+        return $columnList;
     }
 
     /** {@inheritdoc} */
@@ -93,9 +86,9 @@ class SingleTablePersister extends AbstractEntityInheritancePersister
     }
 
     /** {@inheritdoc} */
-    protected function _getSQLTableAlias($className, $assocName = '')
+    protected function _getSQLTableAlias($className)
     {
-        return parent::_getSQLTableAlias($this->_class->rootEntityName, $assocName);
+        return parent::_getSQLTableAlias($this->_class->rootEntityName);
     }
 
     /** {@inheritdoc} */

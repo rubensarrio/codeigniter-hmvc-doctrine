@@ -30,8 +30,11 @@ namespace Doctrine\Common\Cache;
  */
 abstract class AbstractCache implements Cache
 {
+    /** @var string The cache id to store the index of cache ids under */
+    private $_cacheIdsIndexId = 'doctrine_cache_ids';
+
     /** @var string The namespace to prefix all cache ids with */
-    private $_namespace = '';
+    private $_namespace = null;
 
     /**
      * Set the namespace to prefix all cache ids with.
@@ -41,7 +44,7 @@ abstract class AbstractCache implements Cache
      */
     public function setNamespace($namespace)
     {
-        $this->_namespace = (string) $namespace;
+        $this->_namespace = $namespace;
     }
 
     /**
@@ -92,7 +95,7 @@ abstract class AbstractCache implements Cache
         $ids = $this->getIds();
 
         foreach ($ids as $id) {
-            $this->_doDelete($id);
+            $this->delete($id);
         }
 
         return $ids;
@@ -106,12 +109,13 @@ abstract class AbstractCache implements Cache
      */
     public function deleteByRegex($regex)
     {
-        $ids     = $this->getIds();
         $deleted = array();
+
+        $ids = $this->getIds();
 
         foreach ($ids as $id) {
             if (preg_match($regex, $id)) {
-                $this->_doDelete($id);
+                $this->delete($id);
                 $deleted[] = $id;
             }
         }
@@ -123,17 +127,18 @@ abstract class AbstractCache implements Cache
      * Delete cache entries where the id has the passed prefix
      *
      * @param string $prefix
-     * @return array $deleted Array of the deleted cache ids
+     * @return array $deleted  Array of the deleted cache ids
      */
     public function deleteByPrefix($prefix)
     {
-        $prefix  = $this->_getNamespacedId($prefix);
-        $ids     = $this->getIds();
         $deleted = array();
+
+        $prefix = $this->_getNamespacedId($prefix);
+        $ids = $this->getIds();
 
         foreach ($ids as $id) {
             if (strpos($id, $prefix) === 0) {
-                $this->_doDelete($id);
+                $this->delete($id);
                 $deleted[] = $id;
             }
         }
@@ -145,16 +150,17 @@ abstract class AbstractCache implements Cache
      * Delete cache entries where the id has the passed suffix
      *
      * @param string $suffix
-     * @return array $deleted Array of the deleted cache ids
+     * @return array $deleted  Array of the deleted cache ids
      */
     public function deleteBySuffix($suffix)
     {
-        $ids     = $this->getIds();
         $deleted = array();
+
+        $ids = $this->getIds();
 
         foreach ($ids as $id) {
             if (substr($id, -1 * strlen($suffix)) === $suffix) {
-                $this->_doDelete($id);
+                $this->delete($id);
                 $deleted[] = $id;
             }
         }
@@ -170,7 +176,11 @@ abstract class AbstractCache implements Cache
      */
     private function _getNamespacedId($id)
     {
-        return $this->_namespace . $id;
+        if ( ! $this->_namespace || strpos($id, $this->_namespace) === 0) {
+            return $id;
+        } else {
+            return $this->_namespace . $id;
+        }
     }
 
     /**

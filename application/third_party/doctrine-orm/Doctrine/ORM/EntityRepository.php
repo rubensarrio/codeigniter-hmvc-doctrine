@@ -20,7 +20,6 @@
 namespace Doctrine\ORM;
 
 use Doctrine\DBAL\LockMode;
-use Doctrine\Common\Persistence\ObjectRepository;
 
 /**
  * An EntityRepository serves as a repository for entities with generic as well as
@@ -35,7 +34,7 @@ use Doctrine\Common\Persistence\ObjectRepository;
  * @author  Jonathan Wage <jonwage@gmail.com>
  * @author  Roman Borschel <roman@code-factory.org>
  */
-class EntityRepository implements ObjectRepository
+class EntityRepository
 {
     /**
      * @var string
@@ -48,7 +47,7 @@ class EntityRepository implements ObjectRepository
     protected $_em;
 
     /**
-     * @var \Doctrine\ORM\Mapping\ClassMetadata
+     * @var Doctrine\ORM\Mapping\ClassMetadata
      */
     protected $_class;
 
@@ -79,17 +78,6 @@ class EntityRepository implements ObjectRepository
     }
 
     /**
-     * Create a new Query instance based on a predefined metadata named query.
-     *
-     * @param string $queryName
-     * @return Query
-     */
-    public function createNamedQuery($queryName)
-    {
-        return $this->_em->createQuery($this->_class->getNamedQuery($queryName));
-    }
-
-    /**
      * Clears the repository, causing all managed entities to become detached.
      */
     public function clear()
@@ -112,7 +100,7 @@ class EntityRepository implements ObjectRepository
             if (!($entity instanceof $this->_class->name)) {
                 return null;
             }
-
+            
             if ($lockMode != LockMode::NONE) {
                 $this->_em->lock($entity, $lockMode, $lockVersion);
             }
@@ -141,7 +129,7 @@ class EntityRepository implements ObjectRepository
             if (!$this->_em->getConnection()->isTransactionActive()) {
                 throw TransactionRequiredException::transactionRequired();
             }
-
+            
             return $this->_em->getUnitOfWork()->getEntityPersister($this->_entityName)->load($id, null, null, array(), $lockMode);
         }
     }
@@ -160,14 +148,11 @@ class EntityRepository implements ObjectRepository
      * Finds entities by a set of criteria.
      *
      * @param array $criteria
-     * @param array|null $orderBy
-     * @param int|null $limit
-     * @param int|null $offset
-     * @return array The objects.
+     * @return array
      */
-    public function findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+    public function findBy(array $criteria)
     {
-        return $this->_em->getUnitOfWork()->getEntityPersister($this->_entityName)->loadAll($criteria, $orderBy, $limit, $offset);
+        return $this->_em->getUnitOfWork()->getEntityPersister($this->_entityName)->loadAll($criteria);
     }
 
     /**

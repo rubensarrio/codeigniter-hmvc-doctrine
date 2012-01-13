@@ -78,10 +78,6 @@ class ConvertMappingCommand extends Console\Command\Command
                 'num-spaces', null, InputOption::VALUE_OPTIONAL,
                 'Defines the number of indentation spaces', 4
             ),
-            new InputOption(
-                'namespace', null, InputOption::VALUE_OPTIONAL,
-                'Defines a namespace for the generated entity classes, if converted from database.'
-            ),
         ))
         ->setHelp(<<<EOT
 Convert mapping information between supported formats.
@@ -111,17 +107,11 @@ EOT
         $em = $this->getHelper('em')->getEntityManager();
 
         if ($input->getOption('from-database') === true) {
-            $databaseDriver = new \Doctrine\ORM\Mapping\Driver\DatabaseDriver(
-                $em->getConnection()->getSchemaManager()
-            );
-
             $em->getConfiguration()->setMetadataDriverImpl(
-                $databaseDriver
+                new \Doctrine\ORM\Mapping\Driver\DatabaseDriver(
+                    $em->getConnection()->getSchemaManager()
+                )
             );
-
-            if (($namespace = $input->getOption('namespace')) !== null) {
-                $databaseDriver->setNamespace($namespace);
-            }
         }
 
         $cmf = new DisconnectedClassMetadataFactory();

@@ -23,8 +23,7 @@ use ReflectionException,
     Doctrine\ORM\ORMException,
     Doctrine\ORM\EntityManager,
     Doctrine\DBAL\Platforms,
-    Doctrine\ORM\Events,
-    Doctrine\Common\Persistence\Mapping\ClassMetadataFactory as ClassMetadataFactoryInterface;
+    Doctrine\ORM\Events;
 
 /**
  * The ClassMetadataFactory is used to create ClassMetadata objects that contain all the
@@ -37,13 +36,13 @@ use ReflectionException,
  * @author  Jonathan Wage <jonwage@gmail.com>
  * @author  Roman Borschel <roman@code-factory.org>
  */
-class ClassMetadataFactory implements ClassMetadataFactoryInterface
+class ClassMetadataFactory
 {
     /**
      * @var EntityManager
      */
     private $em;
-
+    
     /**
      * @var AbstractPlatform
      */
@@ -73,7 +72,7 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
      * @var bool
      */
     private $initialized = false;
-
+    
     /**
      * @param EntityManager $$em
      */
@@ -85,7 +84,7 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
     /**
      * Sets the cache driver used by the factory to cache ClassMetadata instances.
      *
-     * @param \Doctrine\Common\Cache\Cache $cacheDriver
+     * @param Doctrine\Common\Cache\Cache $cacheDriver
      */
     public function setCacheDriver($cacheDriver)
     {
@@ -95,22 +94,22 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
     /**
      * Gets the cache driver used by the factory to cache ClassMetadata instances.
      *
-     * @return \Doctrine\Common\Cache\Cache
+     * @return Doctrine\Common\Cache\Cache
      */
     public function getCacheDriver()
     {
         return $this->cacheDriver;
     }
-
+    
     public function getLoadedMetadata()
     {
         return $this->loadedMetadata;
     }
-
+    
     /**
      * Forces the factory to load the metadata of all classes known to the underlying
      * mapping driver.
-     *
+     * 
      * @return array The ClassMetadata instances of all mapped classes.
      */
     public function getAllMetadata()
@@ -143,7 +142,7 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
      * Gets the class metadata descriptor for a class.
      *
      * @param string $className The name of the class.
-     * @return \Doctrine\ORM\Mapping\ClassMetadata
+     * @return Doctrine\ORM\Mapping\ClassMetadata
      */
     public function getMetadataFor($className)
     {
@@ -188,7 +187,7 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
 
     /**
      * Checks whether the factory has the metadata for a class loaded already.
-     *
+     * 
      * @param string $className
      * @return boolean TRUE if the metadata of the class in question is already loaded, FALSE otherwise.
      */
@@ -199,7 +198,7 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
 
     /**
      * Sets the metadata descriptor for a specific class.
-     *
+     * 
      * NOTE: This is only useful in very special cases, like when generating proxy classes.
      *
      * @param string $className
@@ -248,13 +247,11 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
 
         // Move down the hierarchy of parent classes, starting from the topmost class
         $parent = null;
-        $rootEntityFound = false;
         $visited = array();
         foreach ($parentClasses as $className) {
             if (isset($this->loadedMetadata[$className])) {
                 $parent = $this->loadedMetadata[$className];
                 if ( ! $parent->isMappedSuperclass) {
-                    $rootEntityFound = true;
                     array_unshift($visited, $className);
                 }
                 continue;
@@ -263,15 +260,19 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
             $class = $this->newClassMetadataInstance($className);
 
             if ($parent) {
-                $class->setInheritanceType($parent->inheritanceType);
-                $class->setDiscriminatorColumn($parent->discriminatorColumn);
+                if (!$parent->isMappedSuperclass) {
+                    $class->setInheritanceType($parent->inheritanceType);
+                    $class->setDiscriminatorColumn($parent->discriminatorColumn);
+                }
                 $class->setIdGeneratorType($parent->generatorType);
                 $this->addInheritedFields($class, $parent);
                 $this->addInheritedRelations($class, $parent);
                 $class->setIdentifier($parent->identifier);
                 $class->setVersioned($parent->isVersioned);
                 $class->setVersionField($parent->versionField);
-                $class->setDiscriminatorMap($parent->discriminatorMap);
+                if (!$parent->isMappedSuperclass) {
+                    $class->setDiscriminatorMap($parent->discriminatorMap);
+                }
                 $class->setLifecycleCallbacks($parent->lifecycleCallbacks);
                 $class->setChangeTrackingPolicy($parent->changeTrackingPolicy);
             }
@@ -283,10 +284,7 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
                 throw MappingException::reflectionFailure($className, $e);
             }
 
-            // If this class has a parent the id generator strategy is inherited.
-            // However this is only true if the hierachy of parents contains the root entity,
-            // if it consinsts of mapped superclasses these don't necessarily include the id field.
-            if ($parent && $rootEntityFound) {
+            if ($parent && ! $parent->isMappedSuperclass) {
                 if ($parent->isIdGeneratorSequence()) {
                     $class->setSequenceGeneratorDefinition($parent->sequenceGeneratorDefinition);
                 } else if ($parent->isIdGeneratorTable()) {
@@ -306,10 +304,6 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
                 $class->setPrimaryTable($parent->table);
             }
 
-            if ($parent && $parent->containsForeignIdentifier) {
-                $class->containsForeignIdentifier = true;
-            }
-
             $class->setParentClasses($visited);
 
             if ($this->evm->hasListeners(Events::loadClassMetadata)) {
@@ -317,14 +311,26 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
                 $this->evm->dispatchEvent(Events::loadClassMetadata, $eventArgs);
             }
 
-            $this->validateRuntimeMetadata($class, $parent);
+            // Verify & complete identifier mapping
+            if ( ! $class->identifier && ! $class->isMappedSuperclass) {
+                throw MappingException::identifierRequired($className);
+            }
+
+            // verify inheritance
+            if (!$parent && !$class->isMappedSuperclass && !$class->isInheritanceTypeNone()) {
+                if (count($class->discriminatorMap) == 0) {
+                    throw MappingException::missingDiscriminatorMap($class->name);
+                }
+                if (!$class->discriminatorColumn) {
+                    throw MappingException::missingDiscriminatorColumn($class->name);
+                }
+            }
 
             $this->loadedMetadata[$className] = $class;
 
             $parent = $class;
 
             if ( ! $class->isMappedSuperclass) {
-                $rootEntityFound = true;
                 array_unshift($visited, $className);
             }
 
@@ -335,42 +341,10 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
     }
 
     /**
-     * Validate runtime metadata is correctly defined.
-     *
-     * @param ClassMetadata $class
-     * @param ClassMetadata $parent
-     */
-    protected function validateRuntimeMetadata($class, $parent)
-    {
-        // Verify & complete identifier mapping
-        if ( ! $class->identifier && ! $class->isMappedSuperclass) {
-            throw MappingException::identifierRequired($class->name);
-        }
-
-        // verify inheritance
-        if (!$class->isMappedSuperclass && !$class->isInheritanceTypeNone()) {
-            if (!$parent) {
-                if (count($class->discriminatorMap) == 0) {
-                    throw MappingException::missingDiscriminatorMap($class->name);
-                }
-                if (!$class->discriminatorColumn) {
-                    throw MappingException::missingDiscriminatorColumn($class->name);
-                }
-            } else if ($parent && !$class->reflClass->isAbstract() && !in_array($class->name, array_values($class->discriminatorMap))) {
-                // enforce discriminator map for all entities of an inheritance hierachy, otherwise problems will occur.
-                throw MappingException::mappedClassNotPartOfDiscriminatorMap($class->name, $class->rootEntityName);
-            }
-        } else if ($class->isMappedSuperclass && $class->name == $class->rootEntityName && (count($class->discriminatorMap) || $class->discriminatorColumn)) {
-            // second condition is necessary for mapped superclasses in the middle of an inheritance hierachy
-            throw MappingException::noInheritanceOnMappedSuperClass($class->name);
-        }
-    }
-
-    /**
      * Creates a new ClassMetadata instance for the given class name.
      *
      * @param string $className
-     * @return \Doctrine\ORM\Mapping\ClassMetadata
+     * @return Doctrine\ORM\Mapping\ClassMetadata
      */
     protected function newClassMetadataInstance($className)
     {
@@ -380,8 +354,8 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
     /**
      * Adds inherited fields to the subclass mapping.
      *
-     * @param \Doctrine\ORM\Mapping\ClassMetadata $subClass
-     * @param \Doctrine\ORM\Mapping\ClassMetadata $parentClass
+     * @param Doctrine\ORM\Mapping\ClassMetadata $subClass
+     * @param Doctrine\ORM\Mapping\ClassMetadata $parentClass
      */
     private function addInheritedFields(ClassMetadata $subClass, ClassMetadata $parentClass)
     {
@@ -402,8 +376,8 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
     /**
      * Adds inherited association mappings to the subclass mapping.
      *
-     * @param \Doctrine\ORM\Mapping\ClassMetadata $subClass
-     * @param \Doctrine\ORM\Mapping\ClassMetadata $parentClass
+     * @param Doctrine\ORM\Mapping\ClassMetadata $subClass
+     * @param Doctrine\ORM\Mapping\ClassMetadata $parentClass
      */
     private function addInheritedRelations(ClassMetadata $subClass, ClassMetadata $parentClass)
     {
@@ -430,7 +404,7 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
      * Completes the ID generator mapping. If "auto" is specified we choose the generator
      * most appropriate for the targeted database platform.
      *
-     * @param \Doctrine\ORM\Mapping\ClassMetadata $class
+     * @param Doctrine\ORM\Mapping\ClassMetadata $class
      */
     private function completeIdGeneratorMapping(ClassMetadataInfo $class)
     {
@@ -481,23 +455,5 @@ class ClassMetadataFactory implements ClassMetadataFactoryInterface
             default:
                 throw new ORMException("Unknown generator type: " . $class->generatorType);
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function isTransient($class)
-    {
-        if ( ! $this->initialized) {
-            $this->initialize();
-        }
-        
-        // Check for namespace alias
-        if (strpos($class, ':') !== false) {
-            list($namespaceAlias, $simpleClassName) = explode(':', $class);
-            $class = $this->em->getConfiguration()->getEntityNamespace($namespaceAlias) . '\\' . $simpleClassName;
-        }
-        
-        return $this->driver->isTransient($class);
     }
 }

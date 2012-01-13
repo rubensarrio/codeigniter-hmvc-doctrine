@@ -58,7 +58,7 @@ abstract class AbstractHydrator
     /**
      * Initializes a new instance of a class derived from <tt>AbstractHydrator</tt>.
      *
-     * @param \Doctrine\ORM\EntityManager $em The EntityManager to use.
+     * @param Doctrine\ORM\EntityManager $em The EntityManager to use.
      */
     public function __construct(EntityManager $em)
     {
@@ -164,11 +164,6 @@ abstract class AbstractHydrator
      * field names during this procedure as well as any necessary conversions on
      * the values applied.
      *
-     * @param array $data SQL Result Row
-     * @param array &$cache Cache for column to field result information
-     * @param array &$id Dql-Alias => ID-Hash
-     * @param array &$nonemptyComponents Does this DQL-Alias has at least one non NULL value?
-     *
      * @return array  An array with all the fields (name => value) of the data row,
      *                grouped by their component alias.
      */
@@ -195,12 +190,9 @@ abstract class AbstractHydrator
                     continue;
                 } else {
                     // Meta column (has meaning in relational schema only, i.e. foreign keys or discriminator columns).
-                    $fieldName = $this->_rsm->metaMappings[$key];
                     $cache[$key]['isMetaColumn'] = true;
-                    $cache[$key]['fieldName'] = $fieldName;
+                    $cache[$key]['fieldName'] = $this->_rsm->metaMappings[$key];
                     $cache[$key]['dqlAlias'] = $this->_rsm->columnOwnerMap[$key];
-                    $classMetadata = $this->_em->getClassMetadata($this->_rsm->aliasMap[$cache[$key]['dqlAlias']]);
-                    $cache[$key]['isIdentifier'] = isset($this->_rsm->isIdentifierColumn[$cache[$key]['dqlAlias']][$key]);
                 }
             }
             
@@ -211,25 +203,13 @@ abstract class AbstractHydrator
 
             $dqlAlias = $cache[$key]['dqlAlias'];
 
-            if ($cache[$key]['isIdentifier']) {
-                $id[$dqlAlias] .= '|' . $value;
+            if (isset($cache[$key]['isMetaColumn'])) {
+                $rowData[$dqlAlias][$cache[$key]['fieldName']] = $value;
+                continue;
             }
 
-            if (isset($cache[$key]['isMetaColumn'])) {
-                if ( ! isset($rowData[$dqlAlias][$cache[$key]['fieldName']]) && $value !== null) {
-                    $rowData[$dqlAlias][$cache[$key]['fieldName']] = $value;
-                    if ($cache[$key]['isIdentifier']) {
-                        $nonemptyComponents[$dqlAlias] = true;
-                    }
-                }
-                continue;
-            }
-            
-            // in an inheritance hierachy the same field could be defined several times.
-            // We overwrite this value so long we dont have a non-null value, that value we keep.
-            // Per definition it cannot be that a field is defined several times and has several values.
-            if (isset($rowData[$dqlAlias][$cache[$key]['fieldName']]) && $value === null) {
-                continue;
+            if ($cache[$key]['isIdentifier']) {
+                $id[$dqlAlias] .= '|' . $value;
             }
 
             $rowData[$dqlAlias][$cache[$key]['fieldName']] = $cache[$key]['type']->convertToPHPValue($value, $this->_platform);
@@ -294,26 +274,5 @@ abstract class AbstractHydrator
         }
 
         return $rowData;
-    }
-    
-    protected function registerManaged($class, $entity, $data)
-    {
-        if ($class->isIdentifierComposite) {
-            $id = array();
-            foreach ($class->identifier as $fieldName) {
-                if (isset($class->associationMappings[$fieldName])) {
-                    $id[$fieldName] = $data[$class->associationMappings[$fieldName]['joinColumns'][0]['name']];
-                } else {
-                    $id[$fieldName] = $data[$fieldName];
-                }
-            }
-        } else {
-            if (isset($class->associationMappings[$class->identifier[0]])) {
-                $id = array($class->identifier[0] => $data[$class->associationMappings[$class->identifier[0]]['joinColumns'][0]['name']]);
-            } else {
-                $id = array($class->identifier[0] => $data[$class->identifier[0]]);
-            }
-        }
-        $this->_em->getUnitOfWork()->registerManaged($entity, $id, $data);
     }
 }

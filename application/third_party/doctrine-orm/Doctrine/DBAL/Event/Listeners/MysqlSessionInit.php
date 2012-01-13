@@ -1,5 +1,7 @@
 <?php
 /*
+ *  $Id$
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -31,7 +33,6 @@ use Doctrine\Common\EventSubscriber;
  * @since       1.0
  * @version     $Revision$
  * @author      Benjamin Eberlei <kontakt@beberlei.de>
- * @deprecated  Use "charset" option to PDO MySQL Connection instead.
  */
 class MysqlSessionInit implements EventSubscriber
 {

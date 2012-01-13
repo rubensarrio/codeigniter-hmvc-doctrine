@@ -46,7 +46,7 @@ class Configuration
      *
      * @param SQLLogger $logger
      */
-    public function setSQLLogger(SQLLogger $logger = null)
+    public function setSQLLogger(SQLLogger $logger)
     {
         $this->_attributes['sqlLogger'] = $logger;
     }

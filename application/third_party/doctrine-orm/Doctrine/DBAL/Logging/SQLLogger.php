@@ -40,7 +40,7 @@ interface SQLLogger
      *
      * @param string $sql The SQL to be executed.
      * @param array $params The SQL parameters.
-     * @param array $types The SQL parameter types.
+     * @param float $executionMS The microtime difference it took to execute this query.
      * @return void
      */
     public function startQuery($sql, array $params = null, array $types = null);

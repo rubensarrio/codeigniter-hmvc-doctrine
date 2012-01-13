@@ -88,20 +88,15 @@ class DriverChain implements Driver
     public function getAllClassNames()
     {
         $classNames = array();
-        $driverClasses = array();
         foreach ($this->_drivers AS $namespace => $driver) {
-            $oid = spl_object_hash($driver);
-            if (!isset($driverClasses[$oid])) {
-                $driverClasses[$oid] = $driver->getAllClassNames();
-            }
-            
-            foreach ($driverClasses[$oid] AS $className) {
+            $driverClasses = $driver->getAllClassNames();
+            foreach ($driverClasses AS $className) {
                 if (strpos($className, $namespace) === 0) {
-                    $classNames[$className] = true;
+                    $classNames[] = $className;
                 }
             }
         }
-        return array_keys($classNames);
+        return array_unique($classNames);
     }
 
     /**

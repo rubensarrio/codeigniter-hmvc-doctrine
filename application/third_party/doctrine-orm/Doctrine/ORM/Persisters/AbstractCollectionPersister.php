@@ -36,19 +36,19 @@ abstract class AbstractCollectionPersister
     protected $_em;
 
     /**
-     * @var \Doctrine\DBAL\Connection
+     * @var Doctrine\DBAL\Connection
      */
     protected $_conn;
 
     /**
-     * @var \Doctrine\ORM\UnitOfWork
+     * @var Doctrine\ORM\UnitOfWork
      */
     protected $_uow;
 
     /**
      * Initializes a new instance of a class derived from AbstractCollectionPersister.
      *
-     * @param \Doctrine\ORM\EntityManager $em
+     * @param Doctrine\ORM\EntityManager $em
      */
     public function __construct(EntityManager $em)
     {
@@ -65,11 +65,9 @@ abstract class AbstractCollectionPersister
     public function delete(PersistentCollection $coll)
     {
         $mapping = $coll->getMapping();
-        
         if ( ! $mapping['isOwningSide']) {
             return; // ignore inverse side
         }
-        
         $sql = $this->_getDeleteSQL($coll);
         $this->_conn->executeUpdate($sql, $this->_getDeleteSQLParameters($coll));
     }
@@ -98,11 +96,9 @@ abstract class AbstractCollectionPersister
     public function update(PersistentCollection $coll)
     {
         $mapping = $coll->getMapping();
-        
         if ( ! $mapping['isOwningSide']) {
             return; // ignore inverse side
         }
-        
         $this->deleteRows($coll);
         //$this->updateRows($coll);
         $this->insertRows($coll);
@@ -112,7 +108,6 @@ abstract class AbstractCollectionPersister
     {        
         $deleteDiff = $coll->getDeleteDiff();
         $sql = $this->_getDeleteRowSQL($coll);
-        
         foreach ($deleteDiff as $element) {
             $this->_conn->executeUpdate($sql, $this->_getDeleteRowSQLParameters($coll, $element));
         }
@@ -125,35 +120,9 @@ abstract class AbstractCollectionPersister
     {
         $insertDiff = $coll->getInsertDiff();
         $sql = $this->_getInsertRowSQL($coll);
-        
         foreach ($insertDiff as $element) {
             $this->_conn->executeUpdate($sql, $this->_getInsertRowSQLParameters($coll, $element));
         }
-    }
-
-    public function count(PersistentCollection $coll)
-    {
-        throw new \BadMethodCallException("Counting the size of this persistent collection is not supported by this CollectionPersister.");
-    }
-
-    public function slice(PersistentCollection $coll, $offset, $length = null)
-    {
-        throw new \BadMethodCallException("Slicing elements is not supported by this CollectionPersister.");
-    }
-
-    public function contains(PersistentCollection $coll, $element)
-    {
-        throw new \BadMethodCallException("Checking for existance of an element is not supported by this CollectionPersister.");
-    }
-
-    public function containsKey(PersistentCollection $coll, $key)
-    {
-        throw new \BadMethodCallException("Checking for existance of a key is not supported by this CollectionPersister.");
-    }
-
-    public function get(PersistentCollection $coll, $index)
-    {
-        throw new \BadMethodCallException("Selecting a collection by index is not supported by this CollectionPersister.");
     }
 
     /**

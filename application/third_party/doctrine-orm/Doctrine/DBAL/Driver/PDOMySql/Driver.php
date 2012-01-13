@@ -56,7 +56,7 @@ class Driver implements \Doctrine\DBAL\Driver
     private function _constructPdoDsn(array $params)
     {
         $dsn = 'mysql:';
-        if (isset($params['host']) && $params['host'] != '') {
+        if (isset($params['host'])) {
             $dsn .= 'host=' . $params['host'] . ';';
         }
         if (isset($params['port'])) {

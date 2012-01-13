@@ -21,7 +21,6 @@ namespace Doctrine\ORM;
 
 use Closure, Exception,
     Doctrine\Common\EventManager,
-    Doctrine\Common\Persistence\ObjectManager,
     Doctrine\DBAL\Connection,
     Doctrine\DBAL\LockMode,
     Doctrine\ORM\Mapping\ClassMetadata,
@@ -38,26 +37,26 @@ use Closure, Exception,
  * @author  Jonathan Wage <jonwage@gmail.com>
  * @author  Roman Borschel <roman@code-factory.org>
  */
-class EntityManager implements ObjectManager
+class EntityManager
 {
     /**
      * The used Configuration.
      *
-     * @var \Doctrine\ORM\Configuration
+     * @var Doctrine\ORM\Configuration
      */
     private $config;
 
     /**
      * The database connection used by the EntityManager.
      *
-     * @var \Doctrine\DBAL\Connection
+     * @var Doctrine\DBAL\Connection
      */
     private $conn;
 
     /**
      * The metadata factory, used to retrieve the ORM metadata of entity classes.
      *
-     * @var \Doctrine\ORM\Mapping\ClassMetadataFactory
+     * @var Doctrine\ORM\Mapping\ClassMetadataFactory
      */
     private $metadataFactory;
 
@@ -71,14 +70,14 @@ class EntityManager implements ObjectManager
     /**
      * The UnitOfWork used to coordinate object-level transactions.
      *
-     * @var \Doctrine\ORM\UnitOfWork
+     * @var Doctrine\ORM\UnitOfWork
      */
     private $unitOfWork;
 
     /**
      * The event manager that is the central point of the event system.
      *
-     * @var \Doctrine\Common\EventManager
+     * @var Doctrine\Common\EventManager
      */
     private $eventManager;
 
@@ -92,14 +91,14 @@ class EntityManager implements ObjectManager
     /**
      * The proxy factory used to create dynamic proxies.
      *
-     * @var \Doctrine\ORM\Proxy\ProxyFactory
+     * @var Doctrine\ORM\Proxy\ProxyFactory
      */
     private $proxyFactory;
 
     /**
      * The expression builder instance used to generate query expressions.
      *
-     * @var \Doctrine\ORM\Query\Expr
+     * @var Doctrine\ORM\Query\Expr
      */
     private $expressionBuilder;
 
@@ -114,9 +113,9 @@ class EntityManager implements ObjectManager
      * Creates a new EntityManager that operates on the given database connection
      * and uses the given Configuration and EventManager implementations.
      *
-     * @param \Doctrine\DBAL\Connection $conn
-     * @param \Doctrine\ORM\Configuration $config
-     * @param \Doctrine\Common\EventManager $eventManager
+     * @param Doctrine\DBAL\Connection $conn
+     * @param Doctrine\ORM\Configuration $config
+     * @param Doctrine\Common\EventManager $eventManager
      */
     protected function __construct(Connection $conn, Configuration $config, EventManager $eventManager)
     {
@@ -128,7 +127,7 @@ class EntityManager implements ObjectManager
         $this->metadataFactory = new $metadataFactoryClassName;
         $this->metadataFactory->setEntityManager($this);
         $this->metadataFactory->setCacheDriver($this->config->getMetadataCacheImpl());
-
+        
         $this->unitOfWork = new UnitOfWork($this);
         $this->proxyFactory = new ProxyFactory($this,
                 $config->getProxyDir(),
@@ -139,7 +138,7 @@ class EntityManager implements ObjectManager
     /**
      * Gets the database connection object used by the EntityManager.
      *
-     * @return \Doctrine\DBAL\Connection
+     * @return Doctrine\DBAL\Connection
      */
     public function getConnection()
     {
@@ -149,7 +148,7 @@ class EntityManager implements ObjectManager
     /**
      * Gets the metadata factory used to gather the metadata of classes.
      *
-     * @return \Doctrine\ORM\Mapping\ClassMetadataFactory
+     * @return Doctrine\ORM\Mapping\ClassMetadataFactory
      */
     public function getMetadataFactory()
     {
@@ -168,7 +167,7 @@ class EntityManager implements ObjectManager
      *         ->where($expr->orX($expr->eq('u.id', 1), $expr->eq('u.id', 2)));
      * </code>
      *
-     * @return \Doctrine\ORM\Query\Expr
+     * @return Doctrine\ORM\Query\Expr
      */
     public function getExpressionBuilder()
     {
@@ -203,18 +202,13 @@ class EntityManager implements ObjectManager
     public function transactional(Closure $func)
     {
         $this->conn->beginTransaction();
-
         try {
-            $return = $func($this);
-
+            $func($this);
             $this->flush();
             $this->conn->commit();
-
-            return $return ?: true;
         } catch (Exception $e) {
             $this->close();
             $this->conn->rollback();
-
             throw $e;
         }
     }
@@ -244,12 +238,12 @@ class EntityManager implements ObjectManager
      *
      * The class name must be the fully-qualified class name without a leading backslash
      * (as it is returned by get_class($obj)) or an aliased class name.
-     *
+     * 
      * Examples:
      * MyProject\Domain\User
      * sales:PriceRequest
      *
-     * @return \Doctrine\ORM\Mapping\ClassMetadata
+     * @return Doctrine\ORM\Mapping\ClassMetadata
      * @internal Performance-sensitive method.
      */
     public function getClassMetadata($className)
@@ -261,7 +255,7 @@ class EntityManager implements ObjectManager
      * Creates a new Query object.
      *
      * @param string  The DQL string.
-     * @return \Doctrine\ORM\Query
+     * @return Doctrine\ORM\Query
      */
     public function createQuery($dql = "")
     {
@@ -276,7 +270,7 @@ class EntityManager implements ObjectManager
      * Creates a Query from a named query.
      *
      * @param string $name
-     * @return \Doctrine\ORM\Query
+     * @return Doctrine\ORM\Query
      */
     public function createNamedQuery($name)
     {
@@ -302,7 +296,7 @@ class EntityManager implements ObjectManager
      * Creates a NativeQuery from a named native query.
      *
      * @param string $name
-     * @return \Doctrine\ORM\NativeQuery
+     * @return Doctrine\ORM\NativeQuery
      */
     public function createNamedNativeQuery($name)
     {
@@ -325,7 +319,7 @@ class EntityManager implements ObjectManager
      * This effectively synchronizes the in-memory state of managed objects with the
      * database.
      *
-     * @throws \Doctrine\ORM\OptimisticLockException If a version check on an entity that
+     * @throws Doctrine\ORM\OptimisticLockException If a version check on an entity that
      *         makes use of optimistic locking fails.
      */
     public function flush()
@@ -413,7 +407,6 @@ class EntityManager implements ObjectManager
         $entity = $class->newInstance();
         $class->setIdentifierValues($entity, $identifier);
         $this->unitOfWork->registerManaged($entity, $identifier, array());
-        $this->unitOfWork->markReadOnly($entity);
 
         return $entity;
     }
@@ -450,7 +443,7 @@ class EntityManager implements ObjectManager
      *
      * The entity will be entered into the database at or before transaction
      * commit or as a result of the flush operation.
-     *
+     * 
      * NOTE: The persist operation always considers entities that are not yet known to
      * this EntityManager as NEW. Do not pass detached entities to the persist operation.
      *
@@ -601,7 +594,7 @@ class EntityManager implements ObjectManager
     /**
      * Gets the EventManager used by the EntityManager.
      *
-     * @return \Doctrine\Common\EventManager
+     * @return Doctrine\Common\EventManager
      */
     public function getEventManager()
     {
@@ -611,7 +604,7 @@ class EntityManager implements ObjectManager
     /**
      * Gets the Configuration used by the EntityManager.
      *
-     * @return \Doctrine\ORM\Configuration
+     * @return Doctrine\ORM\Configuration
      */
     public function getConfiguration()
     {
@@ -632,7 +625,7 @@ class EntityManager implements ObjectManager
 
     /**
      * Check if the Entity manager is open or closed.
-     *
+     * 
      * @return bool
      */
     public function isOpen()
@@ -643,7 +636,7 @@ class EntityManager implements ObjectManager
     /**
      * Gets the UnitOfWork used by the EntityManager to coordinate operations.
      *
-     * @return \Doctrine\ORM\UnitOfWork
+     * @return Doctrine\ORM\UnitOfWork
      */
     public function getUnitOfWork()
     {
@@ -657,7 +650,7 @@ class EntityManager implements ObjectManager
      * selectively iterate over the result.
      *
      * @param int $hydrationMode
-     * @return \Doctrine\ORM\Internal\Hydration\AbstractHydrator
+     * @return Doctrine\ORM\Internal\Hydration\AbstractHydrator
      */
     public function getHydrator($hydrationMode)
     {
@@ -672,7 +665,7 @@ class EntityManager implements ObjectManager
      * Create a new instance for the given hydration mode.
      *
      * @param  int $hydrationMode
-     * @return \Doctrine\ORM\Internal\Hydration\AbstractHydrator
+     * @return Doctrine\ORM\Internal\Hydration\AbstractHydrator
      */
     public function newHydrator($hydrationMode)
     {
@@ -688,9 +681,6 @@ class EntityManager implements ObjectManager
                 break;
             case Query::HYDRATE_SINGLE_SCALAR:
                 $hydrator = new Internal\Hydration\SingleScalarHydrator($this);
-                break;
-            case Query::HYDRATE_SIMPLEOBJECT:
-                $hydrator = new Internal\Hydration\SimpleObjectHydrator($this);
                 break;
             default:
                 if ($class = $this->config->getCustomHydrationMode($hydrationMode)) {
@@ -711,14 +701,6 @@ class EntityManager implements ObjectManager
     public function getProxyFactory()
     {
         return $this->proxyFactory;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function initializeObject($entity)
-    {
-        $this->unitOfWork->initializeObject($entity);
     }
 
     /**

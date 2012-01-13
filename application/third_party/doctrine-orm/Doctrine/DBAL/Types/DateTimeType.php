@@ -52,7 +52,7 @@ class DateTimeType extends Type
 
         $val = \DateTime::createFromFormat($platform->getDateTimeFormatString(), $value);
         if (!$val) {
-            throw ConversionException::conversionFailedFormat($value, $this->getName(), $platform->getDateTimeFormatString());
+            throw ConversionException::conversionFailed($value, $this->getName());
         }
         return $val;
     }

@@ -1,5 +1,7 @@
 <?php
 /*
+ *  $Id$
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -22,6 +24,10 @@ namespace Doctrine\Common\Annotations;
 /**
  * Annotations class
  *
+ * @license http://www.opensource.org/licenses/lgpl-license.php LGPL
+ * @link    www.doctrine-project.org
+ * @since   2.0
+ * @version $Revision$
  * @author  Benjamin Eberlei <kontakt@beberlei.de>
  * @author  Guilherme Blanco <guilhermeblanco@hotmail.com>
  * @author  Jonathan Wage <jonwage@gmail.com>
@@ -59,7 +65,7 @@ class Annotation
             sprintf("Unknown property '%s' on annotation '%s'.", $name, get_class($this))
         );
     }
-
+    
     /**
      * Error handler for unknown property mutator in Annotation class.
      *

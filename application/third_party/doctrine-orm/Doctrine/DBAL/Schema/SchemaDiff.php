@@ -132,7 +132,8 @@ class SchemaDiff
 
         if ($platform->supportsSequences() == true) {
             foreach ($this->changedSequences AS $sequence) {
-                $sql[] = $platform->getAlterSequenceSQL($sequence);
+                $sql[] = $platform->getDropSequenceSQL($sequence);
+                $sql[] = $platform->getCreateSequenceSQL($sequence);
             }
 
             if ($saveMode === false) {
