@@ -2,7 +2,7 @@
 
 Setup ready to use CodeIgniter framework with:
 
--	[CodeIgniter 2.0](http://codeigniter.com)
+-	[CodeIgniter 2.1](http://codeigniter.com)
 - [Modular Extensions - HMVC](http://bitbucket.org/wiredesignz/codeigniter-modular-extensions-hmvc/overview)
 - [Doctrine 2.0](http://http://www.doctrine-project.org/)
 - [DoctrineExtensions](https://github.com/l3pp4rd/DoctrineExtensions) (partial support)
