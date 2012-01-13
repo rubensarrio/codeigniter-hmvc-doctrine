@@ -79,6 +79,13 @@
 		<code>application/controllers/welcome.php</code>
 
 		<p>If you are exploring CodeIgniter for the very first time, you should start by reading the <a href="user_guide/">User Guide</a>.</p>
+		
+		<h2>CodeIgniter 2.1 + HMVC + Doctrine 2</h2>
+
+		<p>An example code of using CodeIgniter 2.1 + HMVC + Doctrine 2 can be found here:</p>
+		<code>application/modules/blog</code>
+
+		<p>You can start testing this example <a href="http://doctrine.dev/index.php/blog/posts">now</a>.</p>
 	</div>
 
 	<p class="footer">Page rendered in <strong>{elapsed_time}</strong> seconds</p>
