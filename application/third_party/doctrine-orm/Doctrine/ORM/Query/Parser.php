@@ -45,19 +45,22 @@ class Parser
 
     /** READ-ONLY: Maps BUILT-IN numeric function names to AST class names. */
     private static $_NUMERIC_FUNCTIONS = array(
-        'length' => 'Doctrine\ORM\Query\AST\Functions\LengthFunction',
-        'locate' => 'Doctrine\ORM\Query\AST\Functions\LocateFunction',
-        'abs'    => 'Doctrine\ORM\Query\AST\Functions\AbsFunction',
-        'sqrt'   => 'Doctrine\ORM\Query\AST\Functions\SqrtFunction',
-        'mod'    => 'Doctrine\ORM\Query\AST\Functions\ModFunction',
-        'size'   => 'Doctrine\ORM\Query\AST\Functions\SizeFunction'
+        'length'    => 'Doctrine\ORM\Query\AST\Functions\LengthFunction',
+        'locate'    => 'Doctrine\ORM\Query\AST\Functions\LocateFunction',
+        'abs'       => 'Doctrine\ORM\Query\AST\Functions\AbsFunction',
+        'sqrt'      => 'Doctrine\ORM\Query\AST\Functions\SqrtFunction',
+        'mod'       => 'Doctrine\ORM\Query\AST\Functions\ModFunction',
+        'size'      => 'Doctrine\ORM\Query\AST\Functions\SizeFunction',
+        'date_diff' => 'Doctrine\ORM\Query\AST\Functions\DateDiffFunction',
     );
 
     /** READ-ONLY: Maps BUILT-IN datetime function names to AST class names. */
     private static $_DATETIME_FUNCTIONS = array(
         'current_date'      => 'Doctrine\ORM\Query\AST\Functions\CurrentDateFunction',
         'current_time'      => 'Doctrine\ORM\Query\AST\Functions\CurrentTimeFunction',
-        'current_timestamp' => 'Doctrine\ORM\Query\AST\Functions\CurrentTimestampFunction'
+        'current_timestamp' => 'Doctrine\ORM\Query\AST\Functions\CurrentTimestampFunction',
+        'date_add'          => 'Doctrine\ORM\Query\AST\Functions\DateAddFunction',
+        'date_sub'          => 'Doctrine\ORM\Query\AST\Functions\DateSubFunction',
     );
 
     /**
@@ -72,14 +75,14 @@ class Parser
     /**
      * The lexer.
      *
-     * @var Doctrine\ORM\Query\Lexer
+     * @var \Doctrine\ORM\Query\Lexer
      */
     private $_lexer;
 
     /**
      * The parser result.
      *
-     * @var Doctrine\ORM\Query\ParserResult
+     * @var \Doctrine\ORM\Query\ParserResult
      */
     private $_parserResult;
 
@@ -167,7 +170,7 @@ class Parser
     /**
      * Gets the lexer used by the parser.
      *
-     * @return Doctrine\ORM\Query\Lexer
+     * @return \Doctrine\ORM\Query\Lexer
      */
     public function getLexer()
     {
@@ -177,7 +180,7 @@ class Parser
     /**
      * Gets the ParserResult that is being filled with information during parsing.
      *
-     * @return Doctrine\ORM\Query\ParserResult
+     * @return \Doctrine\ORM\Query\ParserResult
      */
     public function getParserResult()
     {
@@ -231,7 +234,7 @@ class Parser
      * If they match, updates the lookahead token; otherwise raises a syntax
      * error.
      *
-     * @param int|string token type or value
+     * @param int token type
      * @return void
      * @throws QueryException If the tokens dont match.
      */
@@ -923,6 +926,10 @@ class Parser
         $token = $this->_lexer->lookahead;
         $identVariable = $this->IdentificationVariable();
 
+        if (!isset($this->_queryComponents[$identVariable])) {
+            $this->semanticalError('Identification Variable ' . $identVariable .' used in join path expression but was not defined before.');
+        }
+
         $this->match(Lexer::T_DOT);
         $this->match(Lexer::T_IDENTIFIER);
 
@@ -1459,7 +1466,7 @@ class Parser
     /**
      * RangeVariableDeclaration ::= AbstractSchemaName ["AS"] AliasIdentificationVariable
      *
-     * @return Doctrine\ORM\Query\AST\RangeVariableDeclaration
+     * @return \Doctrine\ORM\Query\AST\RangeVariableDeclaration
      */
     public function RangeVariableDeclaration()
     {
@@ -1530,7 +1537,7 @@ class Parser
      * Join ::= ["LEFT" ["OUTER"] | "INNER"] "JOIN" JoinAssociationPathExpression
      *          ["AS"] AliasIdentificationVariable ["WITH" ConditionalExpression]
      *
-     * @return Doctrine\ORM\Query\AST\Join
+     * @return \Doctrine\ORM\Query\AST\Join
      */
     public function Join()
     {
@@ -1600,7 +1607,7 @@ class Parser
     /**
      * IndexBy ::= "INDEX" "BY" StateFieldPathExpression
      *
-     * @return Doctrine\ORM\Query\AST\IndexBy
+     * @return \Doctrine\ORM\Query\AST\IndexBy
      */
     public function IndexBy()
     {
@@ -1637,6 +1644,10 @@ class Parser
             return $this->StateFieldPathExpression();
         } else if ($lookahead == Lexer::T_INTEGER || $lookahead == Lexer::T_FLOAT) {
             return $this->SimpleArithmeticExpression();
+        } else if ($lookahead == Lexer::T_CASE || $lookahead == Lexer::T_COALESCE || $lookahead == Lexer::T_NULLIF) {
+            // Since NULLIF and COALESCE can be identified as a function, 
+            // we need to check if before check for FunctionDeclaration
+            return $this->CaseExpression();
         } else if ($this->_isFunction() || $this->_isAggregateFunction($this->_lexer->lookahead['type'])) {
             // We may be in an ArithmeticExpression (find the matching ")" and inspect for Math operator)
             $this->_lexer->peek(); // "("
@@ -1658,8 +1669,6 @@ class Parser
         } else if ($lookahead == Lexer::T_TRUE || $lookahead == Lexer::T_FALSE) {
             $this->match($lookahead);
             return new AST\Literal(AST\Literal::BOOLEAN, $this->_lexer->token['value']);
-        } else if ($lookahead == Lexer::T_CASE || $lookahead == Lexer::T_COALESCE || $lookahead == Lexer::T_NULLIF) {
-            return $this->CaseExpression();
         } else {
             $this->syntaxError();
         }
@@ -1667,11 +1676,66 @@ class Parser
 
     public function CaseExpression()
     {
+        $lookahead = $this->_lexer->lookahead['type'];
+        
         // if "CASE" "WHEN" => GeneralCaseExpression
         // else if "CASE" => SimpleCaseExpression
-        // else if "COALESCE" => CoalesceExpression
-        // else if "NULLIF" => NullifExpression
-        $this->semanticalError('CaseExpression not yet supported.');
+        // [DONE] else if "COALESCE" => CoalesceExpression
+        // [DONE] else if "NULLIF" => NullifExpression
+        switch ($lookahead) {
+            case Lexer::T_NULLIF:
+                return $this->NullIfExpression();
+                
+            case Lexer::T_COALESCE:
+                return $this->CoalesceExpression();
+                
+            default:
+                $this->semanticalError('CaseExpression not yet supported.');
+                return null;
+        }
+    }
+    
+    /**
+     * CoalesceExpression ::= "COALESCE" "(" ScalarExpression {"," ScalarExpression}* ")"
+     * 
+     * @return \Doctrine\ORM\Query\AST\CoalesceExpression
+     */
+    public function CoalesceExpression()
+    {
+        $this->match(Lexer::T_COALESCE);
+        $this->match(Lexer::T_OPEN_PARENTHESIS);
+        
+        // Process ScalarExpressions (1..N)
+        $scalarExpressions = array();
+        $scalarExpressions[] = $this->ScalarExpression();
+
+        while ($this->_lexer->isNextToken(Lexer::T_COMMA)) {
+            $this->match(Lexer::T_COMMA);
+            $scalarExpressions[] = $this->ScalarExpression();
+        }
+        
+        $this->match(Lexer::T_CLOSE_PARENTHESIS);
+        
+        return new AST\CoalesceExpression($scalarExpressions);
+    }
+    
+    /**
+     * NullIfExpression ::= "NULLIF" "(" ScalarExpression "," ScalarExpression ")"
+     * 
+     * @return \Doctrine\ORM\Query\AST\ExistsExpression
+     */
+    public function NullIfExpression()
+    {
+        $this->match(Lexer::T_NULLIF);
+        $this->match(Lexer::T_OPEN_PARENTHESIS);
+        
+        $firstExpression = $this->ScalarExpression();
+        $this->match(Lexer::T_COMMA);
+        $secondExpression = $this->ScalarExpression();
+        
+        $this->match(Lexer::T_CLOSE_PARENTHESIS);
+
+        return new AST\NullIfExpression($firstExpression, $secondExpression);
     }
 
     /**
@@ -1679,7 +1743,7 @@ class Parser
      *      IdentificationVariable | StateFieldPathExpression |
      *      (AggregateExpression | "(" Subselect ")" | ScalarExpression) [["AS"] AliasResultVariable]
      *
-     * @return Doctrine\ORM\Query\AST\SelectExpression
+     * @return \Doctrine\ORM\Query\AST\SelectExpression
      */
     public function SelectExpression()
     {
@@ -1710,12 +1774,16 @@ class Parser
             }
         } else if ($this->_isFunction()) {
             $this->_lexer->peek(); // "("
-            $beyond = $this->_peekBeyondClosingParenthesis();
-
+            
+            $lookaheadType = $this->_lexer->lookahead['type'];
+            $beyond        = $this->_peekBeyondClosingParenthesis();
+            
             if ($this->_isMathOperator($beyond)) {
                 $expression = $this->ScalarExpression();
             } else if ($this->_isAggregateFunction($this->_lexer->lookahead['type'])) {
                 $expression = $this->AggregateExpression();
+            } else if (in_array ($lookaheadType, array(Lexer::T_CASE, Lexer::T_COALESCE, Lexer::T_NULLIF))) {
+                $expression = $this->CaseExpression();
             } else {
                 // Shortcut: ScalarExpression => Function
                 $expression = $this->FunctionDeclaration();
@@ -1899,7 +1967,7 @@ class Parser
     /**
      * ConditionalPrimary ::= SimpleConditionalExpression | "(" ConditionalExpression ")"
      *
-     * @return Doctrine\ORM\Query\AST\ConditionalPrimary
+     * @return \Doctrine\ORM\Query\AST\ConditionalPrimary
      */
     public function ConditionalPrimary()
     {
@@ -2222,7 +2290,7 @@ class Parser
     /**
      * ArithmeticPrimary ::= SingleValuedPathExpression | Literal | "(" SimpleArithmeticExpression ")"
      *          | FunctionsReturningNumerics | AggregateExpression | FunctionsReturningStrings
-     *          | FunctionsReturningDatetime | IdentificationVariable
+     *          | FunctionsReturningDatetime | IdentificationVariable | ResultVariable 
      */
     public function ArithmeticPrimary()
     {
@@ -2246,7 +2314,11 @@ class Parser
                 if ($peek['value'] == '.') {
                     return $this->SingleValuedPathExpression();
                 }
-
+                
+                if (isset($this->_queryComponents[$this->_lexer->lookahead['value']]['resultVariable'])) {
+                    return $this->ResultVariable();
+                }
+                
                 return $this->StateFieldPathExpression();
 
             case Lexer::T_INPUT_PARAMETER:
